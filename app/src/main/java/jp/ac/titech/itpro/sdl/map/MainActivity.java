@@ -10,6 +10,8 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -25,6 +27,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.tasks.OnSuccessListener;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
@@ -37,6 +40,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private final static int REQ_PERMISSIONS = 1234;
 
     private TextView infoView;
+    private Button currentLocationButton;
     private GoogleMap map;
 
     private GoogleApiClient apiClient;
@@ -49,6 +53,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         REQUESTING,
         STARTED
     }
+
     private State state = State.STOPPED;
 
 
@@ -57,6 +62,26 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate");
         setContentView(R.layout.activity_main);
+
+        currentLocationButton = findViewById(R.id.current_location);
+        currentLocationButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                locationClient.getLastLocation().addOnSuccessListener(new OnSuccessListener<Location>() {
+                    @Override
+                    public void onSuccess(Location location) {
+                        LatLng ll = new LatLng(location.getLatitude(), location.getLongitude());
+                        infoView.setText(getString(R.string.latlng_format, ll.latitude, ll.longitude));
+                        if (map == null) {
+                            Log.d(TAG, "onSuccess: map == null");
+                            return;
+                        }
+                        map.animateCamera(CameraUpdateFactory.newLatLng(ll));
+                    }
+                });
+            }
+        });
+
 
         infoView = findViewById(R.id.info_view);
         SupportMapFragment fragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map_fragment);
@@ -84,16 +109,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Log.d(TAG, "onLocationResult");
                 if (locationResult == null) {
                     Log.d(TAG, "onLocationResult: locationResult == null");
-                    return;
                 }
-                Location location = locationResult.getLastLocation();
-                LatLng ll = new LatLng(location.getLatitude(), location.getLongitude());
-                infoView.setText(getString(R.string.latlng_format, ll.latitude, ll.longitude));
-                if (map == null) {
-                    Log.d(TAG, "onLocationResult: map == null");
-                    return;
-                }
-                map.animateCamera(CameraUpdateFactory.newLatLng(ll));
             }
         };
     }
@@ -135,8 +151,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(GoogleMap map) {
         Log.d(TAG, "onMapReady");
+        LatLng ll = new LatLng(34.6661212, 133.9155448); // 岡山駅(の近く)
+        map.moveCamera(CameraUpdateFactory.newLatLng(ll));
         map.moveCamera(CameraUpdateFactory.zoomTo(15f));
         this.map = map;
+        infoView.setText(getString(R.string.latlng_format, ll.latitude, ll.longitude));
     }
 
     @Override
